@@ -1,52 +1,35 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import admin from 'firebase-admin';
+import { NextApiRequest, NextApiResponse } from "next";
+import { initializeApp, firestore } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 interface AuthedRequest extends NextApiRequest {
-  user?: { uid: string };
+  user?: { uid: string }; // Placeholder for user authentication data
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-  });
-}
+initializeApp({
+  credential: process.env.FIREBASE_CREDENTIALS ? {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  } : undefined,
+});
 
-const templates = [
-  {
-    id: '1',
-    name: 'Basic CRUD',
-    description: 'A template for basic create, read, update, and delete operations.',
-  },
-  {
-    id: '2',
-    name: 'User Management',
-    description: 'Manage user data with roles and permissions.',
-  },
-  {
-    id: '3',
-    name: 'Product Inventory',
-    description: 'Track and manage product inventories efficiently.',
-  },
-  {
-    id: '4',
-    name: 'Order Processing',
-    description: 'Facilitate the order processing flow for e-commerce.',
-  },
-];
+const db = getFirestore();
 
-const handler = async (req: AuthedRequest, res: NextApiResponse) => {
-  try {
-    if (req.method !== 'GET') {
-      return res.status(405).json({ message: 'Method not allowed' });
-    }
-
-    // Assuming user authentication is handled elsewhere, if needed
-    const user = req.user;
-
-    res.status(200).json(templates);
-  } catch (err) {
-    res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
+export default async function handler(req: AuthedRequest, res: NextApiResponse) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ message: "Method not allowed" });
   }
-};
 
-export default handler;
+  try {
+    const templatesSnapshot = await db.collection("templates").get();
+    const templates = templatesSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    return res.status(200).json(templates);
+  } catch (err) {
+    return res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
+  }
+}
