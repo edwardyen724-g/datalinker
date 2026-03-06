@@ -1,46 +1,32 @@
 import React from 'react';
 import { useQuery } from 'react-query';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabaseClient';
-import DynamicEditor from '@/components/DynamicEditor';
-import LoadingSpinner from '@/components/LoadingSpinner';
-import ErrorMessage from '@/components/ErrorMessage';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
+import { useAuth } from '../../context/authContext';
+import { DynamicEditor } from '../../components/DynamicEditor';
+import { Tooltips } from '../../components/Tooltips';
 
-const supabase: SupabaseClient = createClient();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 const EditorPage: React.FC = () => {
-  const { data, error, isLoading } = useQuery('dataEntries', fetchDataEntries);
+  const { user } = useAuth();
 
-  async function fetchDataEntries() {
-    try {
-      const { data, error } = await supabase.from('data_entries').select('*');
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      throw new Error(err instanceof Error ? err.message : String(err));
-    }
-  }
+  const { data: templates, error, isLoading } = useQuery('templates', async () => {
+    if (!user) throw new Error("User not authenticated");
+    const { data, error } = await supabase.from('templates').select('*');
+    if (error) throw new Error(error.message);
+    return data;
+  });
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage message="Failed to load data entries." />;
+  if (isLoading) return <div>Loading templates...</div>;
+  if (error) return <div>Error: {error instanceof Error ? error.message : String(error)}</div>;
 
   return (
-    <div>
+    <div className="editor-container">
       <h1>Transform Your Data Management Experience with DataLinker!</h1>
-      <DynamicEditor dataEntries={data} />
-      <div>
-        <h2>Streamline dynamic data management for low-code developers.</h2>
-        <p>
-          Use our visual editor to manage your data effortlessly:
-        </p>
-        <ul>
-          <li>Dynamic value assignments to data fields</li>
-          <li>Drag-and-drop interface for linking data</li>
-          <li>Predefined templates for quick setup</li>
-          <li>Real-time previews of data interactions</li>
-          <li>Contextual help and tooltips for guidance</li>
-        </ul>
-      </div>
+      <DynamicEditor templates={templates} />
+      <Tooltips />
     </div>
   );
 };
