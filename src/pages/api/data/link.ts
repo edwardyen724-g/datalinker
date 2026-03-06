@@ -1,73 +1,41 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import admin from 'firebase-admin';
-import { getSession } from 'next-auth/react';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, applicationDefault, cert } from 'firebase-admin/app';
+import { Firestore } from 'firebase-admin/firestore';
 
 interface AuthedRequest extends NextApiRequest {
-  user?: { email: string; id: string };
+  user?: { uid: string };
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    databaseURL: process.env.FIREBASE_DATABASE_URL,
-  });
-}
+const app = initializeApp({
+  credential: process.env.GOOGLE_APPLICATION_CREDENTIALS ? cert(process.env.GOOGLE_APPLICATION_CREDENTIALS) : applicationDefault(),
+});
 
-const rateLimitMap = new Map<string, number>();
+const db: Firestore = getFirestore(app);
 
-const rateLimit = (req: NextApiRequest) => {
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-  const currentTime = Date.now();
-  const limitWindow = 1000 * 60; // 1 minute
-
-  if (!rateLimitMap.has(ip as string)) {
-    rateLimitMap.set(ip as string, currentTime);
-    return true;
-  }
-
-  const lastAccessTime = rateLimitMap.get(ip as string) || 0;
-
-  if (currentTime - lastAccessTime < limitWindow) {
-    return false;
-  }
-
-  rateLimitMap.set(ip as string, currentTime);
-  return true;
-};
-
-const handler = async (req: AuthedRequest, res: NextApiResponse) => {
+const linkData = async (req: AuthedRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method Not Allowed' });
-  }
-
-  if (!rateLimit(req)) {
-    return res.status(429).json({ message: 'Too Many Requests' });
+    return res.status(405).json({ message: 'Method not allowed' });
   }
 
   try {
-    const session = await getSession({ req });
-    if (!session) {
-      return res.status(401).json({ message: 'Unauthorized' });
+    const { sourceId, targetId, linkType } = req.body;
+
+    if (!sourceId || !targetId || !linkType) {
+      return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const { dataFields } = req.body;
-
-    // Validate dataFields structure (simple validation)
-    if (!dataFields || typeof dataFields !== 'object') {
-      return res.status(400).json({ message: 'Invalid dataFields' });
-    }
-
-    // Assuming we have a `dataLinks` collection in Firestore
-    const docRef = await admin.firestore().collection('dataLinks').add({
-      userId: session.user.id,
-      dataFields,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    const linkRef = await db.collection('dataLinks').add({
+      sourceId,
+      targetId,
+      linkType,
+      createdAt: new Date(),
     });
 
-    return res.status(201).json({ id: docRef.id, message: 'Data linked successfully' });
+    return res.status(200).json({ message: 'Data linked successfully', linkId: linkRef.id });
   } catch (err) {
     return res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
   }
 };
 
-export default handler;
+export default linkData;
