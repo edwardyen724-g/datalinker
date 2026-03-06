@@ -1,27 +1,25 @@
-import React from 'react';
 import './globals.css';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { SupabaseProvider } from '../context/supabaseProvider';
-import { Header } from '../components/Header';
-import { Footer } from '../components/Footer';
+import { Inter } from 'next/font/google';
+import { SupabaseProvider } from '../lib/supabase';
+import React from 'react';
 
-const queryClient = new QueryClient();
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
   title: 'DataLinker',
   description: 'Streamline dynamic data management for low-code developers.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.className}>
       <body>
         <SupabaseProvider>
-          <QueryClientProvider client={queryClient}>
-            <Header />
-            <main>{children}</main>
-            <Footer />
-          </QueryClientProvider>
+          <main>{children}</main>
         </SupabaseProvider>
       </body>
     </html>
