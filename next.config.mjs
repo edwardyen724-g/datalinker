@@ -1,21 +1,17 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import { defineConfig } from 'next';
 
-import nextTranslate from 'next-translate';
-
-const { withSass } = require('@zeit/next-sass');
-
-const nextConfig = {
+export default defineConfig({
   reactStrictMode: true,
   swcMinify: true,
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    NEXT_PUBLIC_STRIPE_PUBLIC_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
   },
   images: {
-    domains: ['your-image-domain.com'], // specify allowed image domains
+    domains: ['example.com'], // replace with your image hosting domain
   },
-};
-
-export default nextTranslate(withSass(nextConfig));
+  experimental: {
+    appDir: true,
+  },
+});
