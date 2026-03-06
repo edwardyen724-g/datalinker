@@ -1,7 +1,5 @@
 import React from 'react';
 
-const DynamicEditor: React.FC = () => {
-  return <div>Dynamic Editor</div>;
+export const DynamicEditor = () => {
+  return <div>Dynamic Editor Component</div>;
 };
-
-export default DynamicEditor;
